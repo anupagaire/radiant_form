@@ -1,9 +1,12 @@
-import Image from "next/image";
+import FormSection from "@/components/FormSection";
+import DigitalForm from "@/components/DigitalForm";
 
-export default function Home() {
+export default function CombinedPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-     
+    <div className="space-y-10">
+            <DigitalForm />
+
+      <FormSection />
     </div>
   );
 }
