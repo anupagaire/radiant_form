@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model DigitalSignature {
+  id                      String    @id @default(auto()) @map("_id") @db.ObjectId
+  name                    String?
+  legalStatus             String?
+  citizenshipNo           String?
+  issuingOffice           String?
+  issueDate               DateTime?
+  validity                String?
+  registrationCertificate String?
+  companyIssueDate        DateTime?
+  companyIssuingOffice    String?
+  objectives              String?
+  purposeAll              Boolean?
+  purposeBanking          Boolean?
+  purposePurchase         Boolean?
+  purposeCertification    Boolean?
+  threshold               String?
+  applicant               String?
+  signature               String?
+  finalName               String?
+
+  createdAt               DateTime  @default(now())
+
+  additionalInfo          AdditionalInfo?
+}
+
+model AdditionalInfo {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+
+  digitalSignatureId String   @unique @db.ObjectId
+  digitalSignature   DigitalSignature @relation(fields: [digitalSignatureId], references: [id])
+
+  photoUrl           String?
+
+  address            String?
+  province           String?
+  district           String?
+  municipality       String?
+  city               String?
+  ward               String?
+  postbox            String?
+  contact            String?
+
+  email              String?
+  altEmail           String?
+  cell               String?
+  telephone          String?
+
+  orgName            String?
+  orgType            String?
+  orgAddress         String?
+  orgCity            String?
+  orgProvince        String?
+  orgDistrict        String?
+  orgMunicipality    String?
+  orgWard            String?
+  orgContact         String?
+  orgTelephone       String?
+  pan                String?
+  taxClearance       String?
+  fax                String?
+  website            String?
+
+  class              String?
+  signatureUse       Boolean?
+  encryption         Boolean?
+  bothSignEnc        Boolean?
+  validityYears      String?
+
+  createdAt          DateTime @default(now())
+}
+
