@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 type AdditionalInfo = {
   photoUrl: string | null;
+  livePhotoUrl: string | null;
   address: string | null;
   province: string | null;
   district: string | null;
@@ -97,8 +98,38 @@ function SubmissionCard({ sub }: { sub: Submission }) {
   const [tab, setTab] = useState<"schedule5" | "additional">("schedule5");
   const [open, setOpen] = useState(false);
 
+  const handleDownload = async (url: string, filename: string) => {
+    // If it's a Base64 string, download directly
+    if (url.startsWith('data:')) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+       try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      // Fallback: just open in a new tab if fetch fails
+      window.open(url, '_blank');
+    }
+  };
+
   const ai = sub.additionalInfo;
   const date = new Date(sub.createdAt);
+  const avatarSrc = ai?.livePhotoUrl || ai?.photoUrl || null;
 
   const purposes = [
     { active: sub.purposeAll, label: "All Transactions" },
@@ -109,12 +140,18 @@ function SubmissionCard({ sub }: { sub: Submission }) {
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Card Header */}
-      <div className="flex items-center justify-between px-6 py-4">
+   
+
+<div
+  onClick={() => setOpen(!open)}
+  className="flex items-center justify-between px-4 sm:px-6 py-4 cursor-pointer"
+>
+
+
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 bg-indigo-50 flex items-center justify-center flex-shrink-0">
-            {ai?.photoUrl ? (
-              <img src={ai.photoUrl} alt="applicant" className="w-full h-full object-cover" />
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="applicant" className="w-full h-full object-cover" />
             ) : (
               <span className="text-indigo-600 font-bold text-sm">
                 {(sub.name || sub.finalName || "?")[0]?.toUpperCase()}
@@ -143,7 +180,7 @@ function SubmissionCard({ sub }: { sub: Submission }) {
       </div>
 
       {!open && purposes.length > 0 && (
-        <div className="px-6 pb-4 flex flex-wrap gap-1">
+        <div className="px-4 sm:px-6 pb-4 flex flex-wrap gap-1">
           {purposes.map((p) => <Badge key={p.label} label={p.label} />)}
         </div>
       )}
@@ -166,7 +203,8 @@ function SubmissionCard({ sub }: { sub: Submission }) {
             ))}
           </div>
 
-          <div className="p-6 space-y-8">
+          {/* Reduced padding on mobile */}
+          <div className="p-4 sm:p-6 space-y-8">
             {tab === "schedule5" && (
               <>
                 <div>
@@ -227,12 +265,57 @@ function SubmissionCard({ sub }: { sub: Submission }) {
             {tab === "additional" && (
               ai ? (
                 <>
-                  {ai.photoUrl && (
+                  {(ai.photoUrl || ai.livePhotoUrl) && (
                     <div>
-                      <SectionTitle>Applicant Photo</SectionTitle>
-                      <img src={ai.photoUrl} alt="Applicant" className="w-32 h-40 object-cover rounded-xl border border-slate-200 shadow-sm" />
+                      <SectionTitle>Applicant Photos</SectionTitle>
+                      <div className="flex flex-wrap gap-6">
+                        {ai.photoUrl && (
+                          <div className="text-center">
+                            <img
+                              src={ai.photoUrl}
+                              alt="Uploaded"
+                              className="w-32 h-40 object-cover rounded-xl border border-slate-200 shadow-sm"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1.5 font-medium uppercase tracking-wide">
+                              Uploaded Photo
+                            </p>
+                            <button
+            onClick={() => handleDownload(ai.photoUrl!, `uploaded-${sub.name || 'photo'}.jpg`)}
+            className="mt-2 flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium rounded-lg transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download
+          </button>
+                          </div>
+                        )}
+                        {ai.livePhotoUrl && (
+                          <div className="text-center">
+                            <img
+                              src={ai.livePhotoUrl}
+                              alt="Live Capture"
+                              className="w-32 h-40 object-cover rounded-xl border border-slate-200 shadow-sm"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-1.5 font-medium uppercase tracking-wide">
+                              Live Camera Photo
+                            </p>
+                             <button
+            onClick={() => handleDownload(ai.livePhotoUrl!, `live-${sub.name || 'photo'}.jpg`)}
+            className="mt-2 flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-medium rounded-lg transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download
+          </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
+
+                  <Divider />
 
                   <div>
                     <SectionTitle>1.1 Personal Address</SectionTitle>
@@ -326,7 +409,6 @@ function SubmissionCard({ sub }: { sub: Submission }) {
   );
 }
 
-// ====================== MAIN ADMIN PANEL WITH LOGOUT ======================
 export default function AdminPanel() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -355,20 +437,26 @@ export default function AdminPanel() {
     setToDate(yesterdayStr);
   };
 
+  const setLastMonth = () => {
+    const today = new Date();
+    const lastMonth = new Date();
+    lastMonth.setDate(lastMonth.getDate() - 30); 
+    
+    setFromDate(lastMonth.toISOString().split('T')[0]);
+    setToDate(today.toISOString().split('T')[0]);
+  };
 
-const handleLogout = async () => {
-  try {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-    });
-  } catch (err) {
-    console.error("Logout API failed, clearing manually...");
-  }
-
-  // Fallback: force redirect to login
-  router.push('/login');
-  router.refresh();   // Important: forces middleware to re-check
-};
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+    } catch (err) {
+      console.error("Logout API failed, clearing manually...");
+    }
+    router.push('/login');
+    router.refresh();
+  };
 
   useEffect(() => {
     fetch("/api/combined-form")
@@ -418,35 +506,37 @@ const handleLogout = async () => {
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-5">
-          <div className="flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-800">Digital Signature Applications</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Digital Signature Applications</h1>
               <p className="text-slate-500 text-sm mt-1">
                 Total: {submissions.length} • Complete: {completeSubmissions}
               </p>
             </div>
 
-         <button
-        onClick={handleLogout}
-        className="flex items-center gap-2 px-6 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-xl text-sm transition-all border border-red-100 hover:border-red-200"
-      >
-       
-        Logout
-      </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-xl text-sm transition-all border border-red-100 hover:border-red-200"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 pt-8">
-        {/* Filters Section - Same as before */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-8 shadow-sm">
-          <div className="flex flex-wrap gap-3 mb-5">
-            <button onClick={setToday} className="px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-xl text-sm transition-colors">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 mb-8 shadow-sm">
+          <div className="flex flex-wrap gap-2 sm:gap-3 mb-5">
+            <button onClick={setToday} className="px-4 sm:px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-xl text-sm transition-colors">
               📅 Today
             </button>
-            <button onClick={setYesterday} className="px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-xl text-sm transition-colors">
+            <button onClick={setYesterday} className="px-4 sm:px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-xl text-sm transition-colors">
               📅 Yesterday
+            </button>
+          
+            <button onClick={setLastMonth} className="px-4 sm:px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium rounded-xl text-sm transition-colors">
+              📅 Last 1 Month
             </button>
             <button
               onClick={() => {
@@ -454,7 +544,7 @@ const handleLogout = async () => {
                 setToDate("");
                 setSearch("");
               }}
-              className="px-5 py-2 text-slate-500 hover:text-slate-700 font-medium rounded-xl text-sm border border-slate-200 hover:bg-slate-50 transition-colors"
+              className="px-4 sm:px-5 py-2 text-slate-500 hover:text-slate-700 font-medium rounded-xl text-sm border border-slate-200 hover:bg-slate-50 transition-colors"
             >
               Clear All
             </button>
@@ -499,8 +589,7 @@ const handleLogout = async () => {
           </div>
         </div>
 
-        {/* Rest of your code remains the same */}
-        <div className="flex justify-between items-center mb-4 px-1">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 px-1 gap-2">
           <p className="text-sm text-slate-500">
             Showing {paginatedSubmissions.length} of {filteredSubmissions.length} applications
           </p>
@@ -537,14 +626,15 @@ const handleLogout = async () => {
           </div>
         )}
 
+        {/* Responsive Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center mt-10 gap-2">
+          <div className="flex flex-wrap justify-center mt-10 gap-2">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-5 py-2 border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50"
+              className="px-3 sm:px-5 py-2 text-sm border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50"
             >
-              Previous
+              Prev
             </button>
 
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -553,7 +643,7 @@ const handleLogout = async () => {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`w-10 h-10 rounded-xl font-medium transition-colors ${
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-sm font-medium transition-colors ${
                     currentPage === pageNum ? "bg-indigo-600 text-white" : "border border-slate-200 hover:bg-slate-50"
                   }`}
                 >
@@ -565,7 +655,7 @@ const handleLogout = async () => {
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-5 py-2 border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50"
+              className="px-3 sm:px-5 py-2 text-sm border border-slate-200 rounded-xl disabled:opacity-40 hover:bg-slate-50"
             >
               Next
             </button>

@@ -8,29 +8,40 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// POST /api/combined-form  →  save both forms, upload photo
+// Helper: upload a File/Blob to Cloudinary and return its secure_url
+async function uploadToCloudinary(file: File, folder: string): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ folder, resource_type: "image" }, (err, result) => {
+        if (err || !result) return reject(err);
+        resolve(result as { secure_url: string });
+      })
+      .end(buffer);
+  });
+
+  return uploaded.secure_url;
+}
+
+// POST /api/combined-form  →  save both forms, upload both photos
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
-    // ── Upload photo to Cloudinary if provided ──────────────────────────
+    // ── Upload uploaded photo (file input) ──────────────────────────────
     let photoUrl: string | null = null;
     const photo = formData.get("photo") as File | null;
-
     if (photo && photo.size > 0) {
-      const arrayBuffer = await photo.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      photoUrl = await uploadToCloudinary(photo, "radiant_dsc/uploaded");
+    }
 
-      const uploaded = await new Promise<{ secure_url: string }>((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream({ folder: "radiant_dsc", resource_type: "image" }, (err, result) => {
-            if (err || !result) return reject(err);
-            resolve(result as { secure_url: string });
-          })
-          .end(buffer);
-      });
-
-      photoUrl = uploaded.secure_url;
+    // ── Upload live camera captured photo ───────────────────────────────
+    let livePhotoUrl: string | null = null;
+    const livePhoto = formData.get("livePhoto") as File | null;
+    if (livePhoto && livePhoto.size > 0) {
+      livePhotoUrl = await uploadToCloudinary(livePhoto, "radiant_dsc/live");
     }
 
     // ── Helper to safely get string values ─────────────────────────────
@@ -70,6 +81,7 @@ export async function POST(req: NextRequest) {
       data: {
         digitalSignatureId: digitalSignature.id,
         photoUrl,
+        livePhotoUrl,
 
         address:      s("address"),
         province:     s("province"),

@@ -40,7 +40,7 @@ model AdditionalInfo {
   digitalSignature   DigitalSignature @relation(fields: [digitalSignatureId], references: [id])
 
   photoUrl           String?
-
+  livePhotoUrl       String? 
   address            String?
   province           String?
   district           String?
